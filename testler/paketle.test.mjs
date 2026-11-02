@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { KOK, paketle, zipOku, zipYaz, denetle, EKLENTI_OGELERI, eklentiDosyalari } from '../araclar/paketle.mjs';
-import { GIZLENECEK_SECENEKLER, SOHBET_MENUSU_SECENEKLERI, STIL_DOSYASI, stilUret } from '../araclar/stil-uret.mjs';
+import { DILLER, GIZLENECEK_SECENEKLER, SOHBET_MENUSU_SECENEKLERI, STIL_DOSYASI, stilUret, etiketSecicisi } from '../araclar/stil-uret.mjs';
 
 test('kök düzeni: eklenti dosyaları listede, _locales dışında "_" ile başlayan ad yok', () => {
   const kok = fs.readdirSync(KOK);
@@ -130,13 +130,20 @@ test("icerik.css, araclar/stil-uret.mjs'teki listelerden üretilenle birebir ayn
   assert.equal(fs.readFileSync(STIL_DOSYASI, 'utf8'), stilUret(), 'icerik.css güncel değil: npm run stil çalıştırın');
 });
 
-test("gizlenecek metinler ve sohbet menüsünü tanıtan metinler araclar/stil-uret.mjs'te iki ayrı sabit dizide", () => {
-  assert.deepEqual(GIZLENECEK_SECENEKLER, ['Sohbeti sil', 'Sohbeti temizle', 'Delete chat', 'Clear chat']);
+test("gizlenecek adlar ve sohbet menüsünü tanıtan adlar araclar/stil-uret.mjs'te dillere göre", () => {
+  assert.deepEqual(DILLER.map(d => d.dil), ['Türkçe', 'İngilizce', 'Fransızca', 'Almanca', 'Rusça', 'Japonca', 'İspanyolca',
+    'Portekizce', 'Hintçe', 'Arapça', 'Endonezce']);
+  for (const d of DILLER) assert.ok(d.sil.length && d.temizle.length && d.mesajSec.length && d.kapat.length, d.dil);
+  assert.deepEqual(GIZLENECEK_SECENEKLER.slice(0, 4), ['Sohbeti sil', 'Sohbeti temizle', 'Delete chat', 'Clear chat']);
+  assert.deepEqual(SOHBET_MENUSU_SECENEKLERI.slice(0, 4), ['Mesaj seç', 'Sohbeti kapat', 'Select messages', 'Close chat']);
   assert.ok(!GIZLENECEK_SECENEKLER.includes('Sil') && !GIZLENECEK_SECENEKLER.includes('Delete'), 'mesajın "Sil" seçeneği listede olmamalı');
   // Grup seçenekleri gizlenmez.
   for (const grup of ['Grubu sil', 'Delete group', 'Gruptan çık', 'Exit group']) assert.ok(!GIZLENECEK_SECENEKLER.includes(grup), grup);
-  assert.deepEqual(SOHBET_MENUSU_SECENEKLERI, ['Mesaj seç', 'Sohbeti kapat', 'Select messages', 'Close chat']);
-  // Her gizlenecek metin stil dosyasında birebir etiket olarak geçer.
+  // Gizlenen bir ad sohbet menüsünü tanıtmaz, yoksa sohbet listesinin menüsü de kendi seçeneğiyle tanınırdı.
+  for (const yazi of GIZLENECEK_SECENEKLER) assert.ok(!SOHBET_MENUSU_SECENEKLERI.includes(yazi), yazi);
+  // Her ad stil dosyasında birebir etiket olarak geçer. Görünmeyen biçim karakterleri kaçışla yazılır.
   const stil = fs.readFileSync(STIL_DOSYASI, 'utf8');
-  for (const yazi of [...GIZLENECEK_SECENEKLER, ...SOHBET_MENUSU_SECENEKLERI]) assert.ok(stil.includes(`[aria-label="${yazi}"]`), yazi);
+  for (const yazi of [...GIZLENECEK_SECENEKLER, ...SOHBET_MENUSU_SECENEKLERI]) assert.ok(stil.includes(etiketSecicisi(yazi)), yazi);
+  assert.equal(etiketSecicisi('a‌b "c" \\'), '[aria-label="a\\200c b \\"c\\" \\\\"]');
+  assert.ok(!/\p{Cf}/u.test(stil), 'stil dosyasında görünmeyen karakter kalmamalı');
 });

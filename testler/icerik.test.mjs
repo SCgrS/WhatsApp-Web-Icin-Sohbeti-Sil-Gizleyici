@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { chromeBaslat, chromeYolu, sekmeAc, ifadeBekle, degerlendir } from '../araclar/cdp.mjs';
 import { KOK, eklentiyiKopyala } from '../araclar/paketle.mjs';
+import { DILLER } from '../araclar/stil-uret.mjs';
 
 const BEKLENEN_KIMLIK = 'fidmonnmoifajebnnahmghaipgfhjifa'; // manifest'teki key'den türer
 const MANIFEST = JSON.parse(fs.readFileSync(path.join(KOK, 'manifest.json'), 'utf8'));
@@ -293,9 +294,9 @@ test('ayırıcılar: boş satır, baştaki/sondaki ya da art arda çizgi kalmaz'
     // Menü, aralarında çizgi olan gizlenen seçeneklerle bitiyor.
     [[M, '|', 'Sohbeti temizle', '|', 'Sohbeti sil'], [M]],
     [[M, '|', 'A', '|', 'Sohbeti sil', '|', 'Sohbeti temizle'], [M, '|', 'A']],
-    // Yan yana dört gizlenen seçenek (listedeki bütün yazılar).
-    [[M, '|', 'Sohbeti sil', 'Sohbeti temizle', 'Delete chat', 'Clear chat', '|', 'B'], [M, '|', 'B']],
-    [['Sohbeti sil', 'Sohbeti temizle', 'Delete chat', 'Clear chat', '|', M], [M]],
+    // Başka bir dilde yan yana iki gizlenen seçenek.
+    [['Nachrichten auswählen', '|', 'Chat leeren', 'Chat löschen', '|', 'B'], ['Nachrichten auswählen', '|', 'B']],
+    [['Chat leeren', 'Chat löschen', '|', 'Nachrichten auswählen'], ['Nachrichten auswählen']],
     [[M, '|', '|', 'B'], [M, '|', '|', 'B']] // Gizlenen öğe yoksa WhatsApp'ın düzenine dokunulmaz.
   ];
   for (const [liste, beklenen] of durumlar) {
@@ -383,6 +384,22 @@ test('İngilizce arayüz: Sağ tık menüsünde "Delete chat" ve "Clear chat" gi
   assert.deepEqual((await menuAc('sohbet')).slice(-2), ['Clear chat', 'Delete group']);
   assert.deepEqual((await menuAc('mesaj')).slice(-2), ['|', 'Delete']);
   await sayfaAc();
+});
+
+test('bütün diller: Sohbet menüsünde o dilin silme ve temizleme seçenekleri gizlenir, tanıtan seçeneği olmayan menüde gizlenmez', { skip: ATLA }, async () => {
+  const ozelMenuAc = async liste => {
+    await degerlendir(sayfa.g, `window.sahte.ozelMenu = ${JSON.stringify(liste)}`);
+    return menuAc('sohbet-sag');
+  };
+  for (const d of DILLER) {
+    const gizlenecek = [...new Set([...d.temizle, ...d.sil])];
+    // Her tanıtan ad menüyü tek başına tanıtır. Seçeneğin bütün adları gizlenir.
+    for (const tanitan of [...d.mesajSec, ...d.kapat]) {
+      assert.deepEqual(await ozelMenuAc([tanitan, '|', 'A', ...gizlenecek]), [tanitan, '|', 'A'], `${d.dil}: ${tanitan}`);
+    }
+    // Sohbet listesinin menüsü gibi tanıtan adı olmayan menü olduğu gibi kalır.
+    assert.deepEqual(await ozelMenuAc(['A', '|', ...gizlenecek]), ['A', '|', ...gizlenecek], `${d.dil}: tanıtansız menü`);
+  }
 });
 
 // Chrome'un izinden (trace) bir işin stil hesaplarında yeniden hesaplanan öğe sayısını okur. Sayı bilgisayarın hızına bağlı

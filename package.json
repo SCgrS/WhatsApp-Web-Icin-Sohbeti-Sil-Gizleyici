@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-web-icin-sohbeti-sil-gizleyici",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "WhatsApp Web'de sohbet alanında sağ tıkla açılan menüdeki “Sohbeti sil” ve “Sohbeti temizle” seçeneklerini gizleyen Chrome eklentisi (geliştirme araçları).",
